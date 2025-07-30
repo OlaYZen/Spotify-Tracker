@@ -1,5 +1,5 @@
 .env
-songs.db
+songs.db*
 tools/
 .cache
 __pycache__/
