@@ -673,6 +673,19 @@ function updateHistoryDisplay() {
 
     // Update pagination info
     updatePaginationInfo(totalItems, startIndex + 1, Math.min(endIndex, totalItems), totalPages);
+    
+    // Check for horizontal overflow and add visual indicator
+    checkTableOverflow();
+}
+
+function checkTableOverflow() {
+    const tableContainer = document.querySelector('.table-container');
+    const table = document.querySelector('.history-table');
+    
+    if (tableContainer && table) {
+        const hasOverflow = table.scrollWidth > tableContainer.clientWidth;
+        tableContainer.classList.toggle('has-overflow', hasOverflow);
+    }
 }
 
 function escapeHtml(text) {
@@ -2318,6 +2331,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fallback refresh every 10 seconds (in case WebSocket fails)
     setInterval(refreshData, 10000);
+    
+    // Add resize listener for table overflow detection
+    window.addEventListener('resize', function() {
+        // Debounce the resize event
+        clearTimeout(window.resizeTimeout);
+        window.resizeTimeout = setTimeout(() => {
+            checkTableOverflow();
+        }, 250);
+    });
 });
 
 // Play song function

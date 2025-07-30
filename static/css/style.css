@@ -600,6 +600,18 @@ body::before {
     overflow: hidden;
 }
 
+/* Center the no-data content when no song is playing */
+.song-info .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    text-align: center;
+    gap: 10px;
+    padding: 40px 20px;
+}
+
 .song-info::before {
     content: '';
     position: absolute;
@@ -806,6 +818,21 @@ body::before {
     }
 }
 
+/* High-resolution mobile devices (like Samsung Galaxy S25 Ultra) */
+@media (max-width: 1440px) and (orientation: portrait) {
+    .progress-container {
+        margin-top: 10px;
+    }
+    
+    .progress-bar {
+        height: 8px;
+    }
+    
+    .progress-time {
+        font-size: 0.8rem;
+    }
+}
+
 .history-section {
     background: rgba(255, 255, 255, 0.06);
     border-radius: 20px;
@@ -868,16 +895,74 @@ body::before {
 .table-container {
     background: rgba(255, 255, 255, 0.04);
     border-radius: 0;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-top: none;
     border-bottom: none;
     backdrop-filter: blur(15px);
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(29, 185, 84, 0.3) rgba(255, 255, 255, 0.1);
+}
+
+/* Custom scrollbar for webkit browsers */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: rgba(29, 185, 84, 0.3);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(29, 185, 84, 0.5);
+}
+
+/* Scroll indicator - removed right side gradient */
+
+/* Mobile-specific scroll indicators - left side only */
+@media (max-width: 768px) {
+    .table-container.has-overflow::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 20px;
+        background: linear-gradient(to left, transparent, rgba(29, 185, 84, 0.1));
+        pointer-events: none;
+        opacity: 1;
+        z-index: 1;
+    }
+}
+
+@media (max-width: 1440px) and (orientation: portrait) {
+    .table-container.has-overflow::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 20px;
+        background: linear-gradient(to left, transparent, rgba(29, 185, 84, 0.1));
+        pointer-events: none;
+        opacity: 1;
+        z-index: 1;
+    }
 }
 
 /* History Table */
 .history-table {
     width: 100%;
+    min-width: 1200px; /* Ensure table is wide enough to trigger horizontal scroll */
     border-collapse: collapse;
     font-size: 0.9rem;
 }
@@ -1264,6 +1349,53 @@ body::before {
     }
 }
 
+/* High-resolution mobile devices (like Samsung Galaxy S25 Ultra) */
+@media (max-width: 1440px) and (orientation: portrait) {
+    .history-table {
+        font-size: 0.8rem;
+    }
+    
+    .history-table th,
+    .history-table td {
+        padding: 8px 6px;
+    }
+    
+    .track-name,
+    .artist-name,
+    .album-name,
+    .device-name,
+    .start-time,
+    .end-time,
+    .duration {
+        max-width: 80px;
+    }
+    
+    .status {
+        max-width: 60px;
+    }
+    
+    .pagination-container {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .pagination-left {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .entries-per-page label {
+        font-size: 0.8rem;
+    }
+    
+    .entries-select {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+}
+
 .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1436,6 +1568,91 @@ body::before {
     .song-info {
         flex-direction: column;
         text-align: center;
+    }
+    
+    .song-info .no-data {
+        padding: 30px 15px;
+    }
+
+    .activity-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .activity-meta {
+        align-items: center;
+        min-width: auto;
+    }
+    
+    .activity-device {
+        justify-content: center;
+    }
+    
+    .activity-device span {
+        max-width: 120px;
+    }
+    
+    .activity-time {
+        margin-left: 0;
+    }
+    
+    .top-artist-name {
+        font-size: 1.8rem;
+    }
+    
+    .top-artist-plays {
+        font-size: 1rem;
+    }
+}
+
+/* High-resolution mobile devices (like Samsung Galaxy S25 Ultra) */
+@media (max-width: 1440px) and (orientation: portrait) {
+    .nav-tabs {
+        padding: 3px;
+    }
+    
+    .nav-tab {
+        padding: 12px 8px;
+        font-size: 0.9rem;
+    }
+    
+    .nav-tab span {
+        display: none;
+    }
+    
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .simple-charts {
+        grid-template-columns: 1fr;
+    }
+    
+    .graph-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .graph-card {
+        padding: 15px;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+    }
+    
+    .filters {
+        flex-direction: column;
+    }
+
+    .song-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .song-info .no-data {
+        padding: 30px 15px;
     }
 
     .activity-item {
@@ -1737,6 +1954,42 @@ body::before {
 
 /* Responsive Play Buttons */
 @media (max-width: 768px) {
+    .play-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .play-btn i {
+        font-size: 1rem;
+    }
+    
+    .play-btn-small {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .play-btn-small i {
+        font-size: 0.8rem;
+    }
+    
+    .album-play-btn {
+        font-size: 1rem;
+    }
+    
+    .album-play-btn-small {
+        font-size: 0.8rem;
+    }
+    
+    /* Show album play buttons on mobile touch */
+    .album-cover-container:active .album-play-btn,
+    .album-cover-container:active .album-play-btn-small {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* High-resolution mobile devices (like Samsung Galaxy S25 Ultra) */
+@media (max-width: 1440px) and (orientation: portrait) {
     .play-btn {
         width: 32px;
         height: 32px;
