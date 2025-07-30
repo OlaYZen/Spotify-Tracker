@@ -119,6 +119,12 @@ function loadCurrentSong() {
                     `<img src="${data.album_cover}" alt="Album Cover" class="album-cover">` :
                     `<div class="album-cover-placeholder"><i class="fas fa-music"></i></div>`;
                 
+                // Determine initial time display based on stored preference
+                const timeDisplay = songDiv.dataset.timeDisplay || 'duration';
+                const initialTime = timeDisplay === 'remaining' ? 
+                    formatTimeRemaining(data.progress_ms, data.duration_ms) : 
+                    data.duration_time;
+                
                 // Create progress bar HTML
                 const progressBar = `
                     <div class="progress-container">
@@ -127,7 +133,7 @@ function loadCurrentSong() {
                         </div>
                         <div class="progress-time">
                             <span class="current-time">${data.progress_time}</span>
-                            <span class="total-time">${data.duration_time}</span>
+                            <span class="total-time clickable" data-showing="${timeDisplay}" data-duration="${data.duration_time}" data-remaining="${formatTimeRemaining(data.progress_ms, data.duration_ms)}">${initialTime}</span>
                         </div>
                     </div>
                 `;
@@ -138,15 +144,32 @@ function loadCurrentSong() {
                     '<i class="fas fa-pause-circle play-indicator paused"></i>';
                 
                 songDiv.innerHTML = `
-                    ${albumCover}
-                    <div class="song-details">
-                        <div class="song-title">${playStatus} ${data.track}</div>
-                        <div class="song-artist">${data.artist}</div>
-                        <div class="song-album">${data.album}</div>
-                        <div class="song-device">
-                            <i class="fas fa-desktop"></i> ${data.device}
+                    <div class="song-main-content">
+                        ${albumCover}
+                        <div class="song-details">
+                            <div class="song-title">${playStatus} ${data.track}</div>
+                            <div class="song-artist">${data.artist}</div>
+                            <div class="song-album">${data.album}</div>
+                            ${progressBar}
                         </div>
-                        ${progressBar}
+                    </div>
+                    <div class="song-additional-info">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <i class="fas fa-calendar-alt"></i>
+                                <div class="info-content">
+                                    <div class="info-label">Release Year</div>
+                                    <div class="info-value">${data.release_year || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-${getDeviceIcon(data.type)}"></i>
+                                <div class="info-content">
+                                    <div class="info-label">Device</div>
+                                    <div class="info-value">${data.device}</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
                 
@@ -160,6 +183,32 @@ function loadCurrentSong() {
                         console.log('🎯 Progress bar clicked at:', percentage.toFixed(1) + '%');
                         // TODO: Implement seeking when Spotify API permissions are available
                     });
+                }
+                
+                // Add click handler for time toggle
+                const totalTimeElement = songDiv.querySelector('.total-time.clickable');
+                if (totalTimeElement) {
+                    totalTimeElement.addEventListener('click', function() {
+                        const currentlyShowing = this.dataset.showing;
+                        const duration = this.dataset.duration;
+                        const remaining = this.dataset.remaining;
+                        
+                        if (currentlyShowing === 'duration') {
+                            this.textContent = remaining;
+                            this.dataset.showing = 'remaining';
+                            songDiv.dataset.timeDisplay = 'remaining';
+                        } else {
+                            this.textContent = duration;
+                            this.dataset.showing = 'duration';
+                            songDiv.dataset.timeDisplay = 'duration';
+                        }
+                    });
+                }
+                
+                // Restore or set the display preference
+                const existingPreference = songDiv.dataset.timeDisplay;
+                if (!existingPreference) {
+                    songDiv.dataset.timeDisplay = 'duration';
                 }
                 
                 // Store progress data for real-time updates
@@ -240,6 +289,23 @@ function updateProgressBar() {
         const currentTime = formatTime(currentProgress);
         currentTimeSpan.textContent = currentTime;
         
+        // Update total time display based on user preference
+        const totalTimeElement = songDiv.querySelector('.total-time.clickable');
+        if (totalTimeElement) {
+            const timeDisplay = songDiv.dataset.timeDisplay || 'duration';
+            const duration = parseInt(songDiv.dataset.durationMs);
+            
+            if (timeDisplay === 'remaining') {
+                const remaining = formatTimeRemaining(currentProgress, duration);
+                totalTimeElement.textContent = remaining;
+                totalTimeElement.dataset.remaining = remaining;
+            } else {
+                const durationTime = formatTime(duration);
+                totalTimeElement.textContent = durationTime;
+                totalTimeElement.dataset.duration = durationTime;
+            }
+        }
+        
         // Update stored data
         songDiv.dataset.progressMs = currentProgress;
         songDiv.dataset.lastUpdate = now;
@@ -253,6 +319,16 @@ function formatTime(ms) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+// Helper function to format remaining time
+function formatTimeRemaining(progressMs, durationMs) {
+    if (!progressMs || !durationMs) {
+        return "-0:00";
+    }
+    
+    const remainingMs = durationMs - progressMs;
+    return "-" + formatTime(remainingMs);
 }
 
 // Global variables for background transition
@@ -281,10 +357,10 @@ function extractDominantColor(imageUrl) {
                 // Draw the image on canvas
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 
-                // Focus on the center area (60% of the image) to avoid edges and borders
+                // Focus on the center area (90% of the image) to get broader color analysis
                 const centerX = canvas.width / 2;
                 const centerY = canvas.height / 2;
-                const centerSize = Math.min(canvas.width, canvas.height) * 0.6;
+                const centerSize = Math.min(canvas.width, canvas.height) * 0.9;
                 const startX = Math.floor(centerX - centerSize / 2);
                 const startY = Math.floor(centerY - centerSize / 2);
                 const endX = Math.floor(centerX + centerSize / 2);
@@ -544,6 +620,7 @@ let listeningActivityChart = null;
 let hourlyChart = null;
 let dailyChart = null;
 let topArtistsAllTimeChart = null;
+let topArtistByDayChart = null;
 let deviceUsageChart = null;
 let topAlbumsChart = null;
 let genreChart = null;
@@ -954,27 +1031,36 @@ function displayTopArtistToday() {
     
     const todaysSongs = allSongs.filter(song => {
         const isToday = song.date === today;
+        const hasMinimumDuration = song.played_duration_ms && song.played_duration_ms >= 60000; // At least 1 minute
+        
         if (isToday) {
-            console.log(`🎵 Today's song: ${song.track_name} by ${song.artist_name} (date: ${song.date})`);
+            const artists = song.artist_name.split(',').map(artist => artist.trim());
+            console.log(`🎵 Today's song: ${song.track_name} by ${song.artist_name} (split into: [${artists.join(', ')}]) (date: ${song.date}, duration: ${song.played_duration_ms}ms, meets threshold: ${hasMinimumDuration})`);
         }
-        return isToday;
+        return isToday && hasMinimumDuration;
     });
     
-    console.log('🎵 Top Artist Today - Songs found for today:', todaysSongs.length);
+    console.log('🎵 Top Artist Today - Songs found for today (with ≥1m listening time):', todaysSongs.length);
     
     if (todaysSongs.length === 0) {
-        displayDiv.innerHTML = '<div class="no-artist-today">No songs played today</div>';
-        console.log('🎵 Top Artist Today - No songs found for today');
+        displayDiv.innerHTML = '<div class="no-artist-today">No songs played today<br><small>(with ≥1m listening time)</small></div>';
+        console.log('🎵 Top Artist Today - No songs found for today with ≥1m listening time');
         return;
     }
     
-    // Count artists
+    // Count artists - split by commas to handle multiple artists
     const artistCounts = {};
     todaysSongs.forEach(song => {
-        artistCounts[song.artist_name] = (artistCounts[song.artist_name] || 0) + 1;
+        // Split artist names by comma and trim whitespace
+        const artists = song.artist_name.split(',').map(artist => artist.trim());
+        
+        // Count each individual artist
+        artists.forEach(artist => {
+            artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+        });
     });
     
-    console.log('🎵 Top Artist Today - Artist counts:', artistCounts);
+    console.log('🎵 Top Artist Today - Artist counts (after splitting):', artistCounts);
     
     // Get top artist
     const topArtist = Object.entries(artistCounts)
@@ -1114,6 +1200,7 @@ function createDetailedCharts() {
     createHourlyChart();
     createDailyChart();
     createTopArtistsAllTimeChart();
+    createTopArtistByDayChart();
     createDeviceUsageChart();
     createTopAlbumsChart();
     createGenreChart();
@@ -1316,6 +1403,115 @@ function createTopArtistsAllTimeChart() {
                     },
                     ticks: {
                         color: '#b3b3b3'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createTopArtistByDayChart() {
+    const ctx = document.getElementById('topArtistByDayChart');
+    if (!ctx) return;
+    
+    // Group songs by day of week and find top artist for each day
+    const dayOfWeekData = {};
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    
+    // Initialize data structure for each day
+    dayNames.forEach(day => {
+        dayOfWeekData[day] = { artistCounts: {}, topArtist: null, topCount: 0 };
+    });
+    
+    // Process each song
+    allSongs.forEach(song => {
+        if (song.timestamp) {
+            const songDate = new Date(song.timestamp);
+            // Map JavaScript day index (0=Sunday, 1=Monday, etc.) to our Monday-first array
+            const jsDayIndex = songDate.getDay();
+            const dayIndex = jsDayIndex === 0 ? 6 : jsDayIndex - 1; // Sunday becomes index 6, Monday becomes index 0
+            const dayName = dayNames[dayIndex];
+            
+            // Only count songs with ≥1m listening time (same as Top Artist Today)
+            if (song.played_duration_ms && song.played_duration_ms >= 60000) {
+                // Split artist names by comma and count each individually
+                const artists = song.artist_name.split(',').map(artist => artist.trim());
+                
+                artists.forEach(artist => {
+                    dayOfWeekData[dayName].artistCounts[artist] = 
+                        (dayOfWeekData[dayName].artistCounts[artist] || 0) + 1;
+                });
+            }
+        }
+    });
+    
+    // Find top artist for each day
+    dayNames.forEach(day => {
+        const artistCounts = dayOfWeekData[day].artistCounts;
+        if (Object.keys(artistCounts).length > 0) {
+            const topArtist = Object.entries(artistCounts)
+                .sort(([,a], [,b]) => b - a)[0];
+            dayOfWeekData[day].topArtist = topArtist[0];
+            dayOfWeekData[day].topCount = topArtist[1];
+        }
+    });
+    
+    // Prepare chart data
+    const labels = dayNames;
+    const data = dayNames.map(day => dayOfWeekData[day].topCount);
+    const artistLabels = dayNames.map(day => dayOfWeekData[day].topArtist || 'No data');
+    
+    if (topArtistByDayChart) {
+        topArtistByDayChart.destroy();
+    }
+    
+    topArtistByDayChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Top Artist Plays',
+                data: data,
+                backgroundColor: 'rgba(29, 185, 84, 0.8)',
+                borderColor: '#1db954',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#fff'
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        afterLabel: function(context) {
+                            const dayIndex = context.dataIndex;
+                            const artist = artistLabels[dayIndex];
+                            return `Top Artist: ${artist}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#b3b3b3'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: '#b3b3b3',
+                        beginAtZero: true
                     }
                 }
             }

@@ -202,6 +202,14 @@ def get_current_song():
                 seconds = seconds % 60
                 return f"{minutes}:{seconds:02d}"
             
+            # Get release year from album
+            release_year = None
+            if track['album'].get('release_date'):
+                try:
+                    release_year = track['album']['release_date'][:4]  # Get first 4 characters (year)
+                except:
+                    release_year = None
+            
             logger.info(f"🎵 Currently playing: {track['name']} by {', '.join([a['name'] for a in track['artists']])} - Progress: {format_time(progress_ms)}/{format_time(duration_ms)}")
             return jsonify({
                 'track': track['name'],
@@ -215,7 +223,8 @@ def get_current_song():
                 'progress_percentage': round(progress_percentage, 2),
                 'progress_time': format_time(progress_ms),
                 'duration_time': format_time(duration_ms),
-                'is_playing': playback.get('is_playing', False)
+                'is_playing': playback.get('is_playing', False),
+                'release_year': release_year
             })
         else:
             logger.info("🎵 No song currently playing")

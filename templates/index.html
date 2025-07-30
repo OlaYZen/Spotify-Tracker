@@ -71,15 +71,11 @@
                         <div id="todayListened" class="stat-number">0m</div>
                         <div class="stat-label">Today's Time Listened</div>
                     </div>
-                    <div class="stat-card">
-                        <div id="totalListened" class="stat-number">0m</div>
-                        <div class="stat-label">Total Time Listened</div>
-                    </div>
                 </div>
 
                 <div class="simple-charts">
                     <div class="chart-card">
-                        <h3><i class="fas fa-star"></i> Top Artist Today</h3>
+                        <h3><i class="fas fa-star"></i> Top Artist Today <span class="chart-subtitle-inline">(≥1m listening time)</span></h3>
                         <div id="topArtistDisplay" class="top-artist-display">
                             <div class="loading">
                                 <i class="fas fa-spinner"></i>
@@ -223,6 +219,10 @@
                         <div id="uniqueAlbums" class="stat-number">0</div>
                         <div class="stat-label">Unique Albums</div>
                     </div>
+                    <div class="stat-card">
+                        <div id="totalListened" class="stat-number">0m</div>
+                        <div class="stat-label">Total Time Listened</div>
+                    </div>
                 </div>
                 
                 <div class="graph-grid">
@@ -239,6 +239,11 @@
                     <div class="graph-card">
                         <h3><i class="fas fa-users"></i> Top Artists (All Time)</h3>
                         <canvas id="topArtistsAllTimeChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-calendar-day"></i> Top Artist by Day of Week</h3>
+                        <canvas id="topArtistByDayChart" width="400" height="300"></canvas>
                     </div>
                     
                     <div class="graph-card">
