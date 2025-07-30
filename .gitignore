@@ -1,0 +1,6 @@
+.env
+songs.db
+tools/
+.cache
+__pycache__/
+output.log

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#1DB954" stroke="#191414" stroke-width="2"/>
+  
+  <!-- Music note -->
+  <path d="M12 8 L12 20 L10 20 L10 22 L14 22 L14 20 L12 20 Z" fill="white"/>
+  <circle cx="14" cy="24" r="2" fill="white"/>
+  
+  <!-- Tracking dots -->
+  <circle cx="20" cy="12" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="22" cy="16" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="20" cy="20" r="1.5" fill="white" opacity="0.4"/>
+  
+  <!-- Small accent -->
+  <circle cx="24" cy="8" r="1" fill="white" opacity="0.5"/>
+</svg> 

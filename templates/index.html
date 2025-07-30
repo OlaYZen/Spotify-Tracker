@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Spotify Tracker</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- <div class="header">
+            <h1><i class="fab fa-spotify"></i> Spotify Tracker</h1>
+            <div class="refresh-info">
+                <i class="fas fa-bolt"></i> Real-time updates enabled - new songs will appear automatically
+            </div>
+        </div> -->
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="nav-tab active" data-tab="home">
+                <i class="fas fa-home"></i> Home
+            </button>
+            <button class="nav-tab" data-tab="history">
+                <i class="fas fa-history"></i> History
+            </button>
+            <button class="nav-tab" data-tab="graphs">
+                <i class="fas fa-chart-line"></i> Analytics
+            </button>
+        </nav>
+
+        <!-- Home Tab Content -->
+        <div id="homeTab" class="tab-content active">
+            <div class="main-content">
+                <div class="now-playing">
+                    <h2><i class="fas fa-play-circle"></i> Now Playing</h2>
+                    <div id="song" class="song-info">
+                        <div class="loading">
+                            <i class="fas fa-spinner"></i>
+                            <div>Loading current song...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h2><i class="fas fa-clock"></i> Recent Activity</h2>
+                    <div id="recentActivity" class="activity-list">
+                        <div class="loading">
+                            <i class="fas fa-spinner"></i>
+                            <div>Loading recent activity...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats and Simple Charts -->
+            <div class="home-charts">
+                <div class="stats">
+                    <div class="stat-card">
+                        <div id="todaySongs" class="stat-number">0</div>
+                        <div class="stat-label">Today's Songs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="todayListened" class="stat-number">0m</div>
+                        <div class="stat-label">Today's Time Listened</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="totalListened" class="stat-number">0m</div>
+                        <div class="stat-label">Total Time Listened</div>
+                    </div>
+                </div>
+
+                <div class="simple-charts">
+                    <div class="chart-card">
+                        <h3><i class="fas fa-star"></i> Top Artist Today</h3>
+                        <div id="topArtistDisplay" class="top-artist-display">
+                            <div class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <div>Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3><i class="fas fa-headphones"></i> Listening Activity</h3>
+                        <canvas id="listeningActivityChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab Content -->
+        <div id="historyTab" class="tab-content">
+            <div class="history-section">
+                <div class="history-header">
+                    <h2><i class="fas fa-history"></i> Complete Listening History</h2>
+                    <div class="filters">
+                        <input type="text" id="globalFilter" class="filter-input" placeholder="Search all columns...">
+                        <input type="text" id="artistFilter" class="filter-input" placeholder="Filter by artist...">
+                        <input type="text" id="albumFilter" class="filter-input" placeholder="Filter by album...">
+                    </div>
+                </div>
+                <div class="pagination-container pagination-top">
+                    <div class="pagination-left">
+                        <div class="pagination-info">
+                            <span id="paginationInfo">Showing 0 of 0 entries</span>
+                        </div>
+                        <div class="entries-per-page">
+                            <label for="entriesPerPage">Show entries per page:</label>
+                            <select id="entriesPerPage" class="entries-select">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="prevPage" class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="pageIndicator">Page 1</span>
+                        <button id="nextPage" class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="historyTable" class="history-table">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-column="album_cover">
+                                    <i class="fas fa-image"></i>
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="track_name">
+                                    Track
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="artist_name">
+                                    Artist
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="album_name">
+                                    Album
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="device_name">
+                                    Device
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="device_type">
+                                    Type
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="date">
+                                    Date
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="start_time">
+                                    Started
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="end_time">
+                                    Stopped
+                                    <span class="sort-indicator"></span>
+                                </th>
+                                <th class="sortable" data-column="played_duration_ms">
+                                    Duration
+                                    <span class="sort-indicator"></span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="history">
+                            <tr>
+                                <td colspan="11" class="loading">
+                                    <i class="fas fa-spinner"></i>
+                                    <div>Loading history...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container pagination-bottom">
+                    <div class="pagination-info">
+                        <span id="paginationInfoBottom">Showing 0 of 0 entries</span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button id="prevPageBottom" class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="pageIndicatorBottom">Page 1</span>
+                        <button id="nextPageBottom" class="pagination-btn" disabled>
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab Content -->
+        <div id="graphsTab" class="tab-content">
+            <div class="graphs-section">
+                <!-- <h2><i class="fas fa-chart-line"></i> Detailed Analytics</h2> -->
+                
+                <!-- Overall Stats -->
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div id="totalSongs" class="stat-number">0</div>
+                        <div class="stat-label">Total Songs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="uniqueArtists" class="stat-number">0</div>
+                        <div class="stat-label">Unique Artists</div>
+                    </div>
+                    <div class="stat-card">
+                        <div id="uniqueAlbums" class="stat-number">0</div>
+                        <div class="stat-label">Unique Albums</div>
+                    </div>
+                </div>
+                
+                <div class="graph-grid">
+                    <div class="graph-card">
+                        <h3><i class="fas fa-clock"></i> Listening Patterns by Hour</h3>
+                        <canvas id="hourlyChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-calendar"></i> Daily Activity</h3>
+                        <canvas id="dailyChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-users"></i> Top Artists (All Time)</h3>
+                        <canvas id="topArtistsAllTimeChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-mobile-alt"></i> Device Usage</h3>
+                        <canvas id="deviceUsageChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-music"></i> Top Albums</h3>
+                        <canvas id="topAlbumsChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-chart-pie"></i> Genre Distribution</h3>
+                        <canvas id="genreChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-hourglass-half"></i> 24h Listening Time</h3>
+                        <canvas id="hourlyListeningChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-chart-area"></i> Daily Listening Distribution</h3>
+                        <canvas id="dailyListeningChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-calendar-week"></i> Weekly Listening Patterns</h3>
+                        <canvas id="weeklyListeningChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-clock"></i> Average Song Duration</h3>
+                        <canvas id="averageDurationChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-chart-line"></i> Listening Streak</h3>
+                        <canvas id="listeningStreakChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-music"></i> Top Genres</h3>
+                        <canvas id="topGenresChart" width="400" height="300"></canvas>
+                    </div>
+                    
+                    <div class="graph-card">
+                        <h3><i class="fas fa-trophy"></i> Completion Rate Trends</h3>
+                        <canvas id="completionRateChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 
