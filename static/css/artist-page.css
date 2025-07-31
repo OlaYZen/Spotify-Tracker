@@ -1,0 +1,375 @@
+/* Artist Page Styles */
+.artist-header {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Add text-shadow to all text elements */
+.artist-header *,
+.artist-section *,
+.song-item *,
+.clickable-artist,
+.song-type-badge {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.back-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(-2px);
+}
+
+.artist-info {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.artist-image-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.artist-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+
+.artist-image-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #333, #555);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 3rem;
+}
+
+.artist-details h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(29, 185, 84, 1) 0%, rgba(30, 215, 96, 1) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.artist-stats {
+    display: flex;
+    gap: 30px;
+}
+
+.artist-stats .stat-item {
+    text-align: center;
+}
+
+.artist-stats .stat-number {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 5px;
+}
+
+.artist-stats .stat-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.artist-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+/* When we have exactly 3 sections (Features, Solo, Full History) */
+.artist-sections:has(.artist-section:nth-child(3)) {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+}
+
+.artist-sections:has(.artist-section:nth-child(3)) .artist-section:first-child {
+    order: 2; /* Features goes to the right */
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.artist-sections:has(.artist-section:nth-child(3)) .artist-section:nth-child(2) {
+    order: 1; /* Solo Tracks goes to the left */
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.artist-sections:has(.artist-section:nth-child(3)) .artist-section:nth-child(3) {
+    order: 3; /* Full History goes to the bottom, spanning full width */
+    grid-column: 1 / -1;
+    grid-row: 2;
+}
+
+/* When only one section is visible, make it fill the full width */
+.artist-sections:has(.artist-section:only-child) {
+    grid-template-columns: 1fr;
+}
+
+/* When Features section is hidden, make Solo and Full History take full width */
+.artist-sections:has(.artist-section:nth-child(1)[style*="display: none"]) {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* When Solo section is hidden, make Features and Full History take full width */
+.artist-sections:has(.artist-section:nth-child(2)[style*="display: none"]) {
+    grid-template-columns: 1fr 1fr;
+}
+
+/* When Full History section is hidden, make Features and Solo take full width */
+.artist-sections:has(.artist-section:nth-child(3)[style*="display: none"]) {
+    grid-template-columns: 1fr 1fr;
+}
+
+.artist-section {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.artist-section h3 {
+    font-size: 1.3rem;
+    color: #ffffff;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.artist-section h3 i {
+    color: rgba(29, 185, 84, 0.8);
+}
+
+.songs-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.songs-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.songs-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.songs-list::-webkit-scrollbar-thumb {
+    background: rgba(29, 185, 84, 0.3);
+    border-radius: 10px;
+}
+
+.songs-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(29, 185, 84, 0.6);
+}
+
+.song-item {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.song-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.song-item-cover {
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.song-item-cover-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 6px;
+    background: linear-gradient(45deg, #333, #555);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.song-item-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.song-item-title {
+    font-weight: 600;
+    color: #ffffff;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.song-item-album {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.song-item-time {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+}
+
+.song-item-artists {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-bottom: 4px;
+}
+
+/* Mobile responsiveness for artist page */
+@media (max-width: 768px) {
+    .artist-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+    
+    .artist-details h1 {
+        font-size: 2rem;
+    }
+    
+    .artist-stats {
+        justify-content: center;
+        gap: 20px;
+    }
+    
+    .artist-sections {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+    }
+    
+    .artist-section {
+        padding: 20px;
+        order: unset !important;
+    }
+}
+
+/* Clickable Artist Names */
+.clickable-artist {
+    color: rgba(29, 185, 84, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.clickable-artist:hover {
+    color: rgba(29, 185, 84, 1);
+    border-bottom-color: rgba(29, 185, 84, 0.6);
+    transform: translateY(-1px);
+}
+
+.clickable-artist:active {
+    transform: translateY(0);
+}
+
+/* Style for artist names in tables */
+.artist-name .clickable-artist {
+    display: inline-block;
+    margin-right: 4px;
+}
+
+/* .artist-name .clickable-artist:not(:last-child)::after {
+    content: ',';
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: 4px;
+}  */
+
+/* Song type badges for history */
+.song-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.solo-badge {
+    background-color: rgba(29, 185, 84, 0.2);
+    color: rgba(29, 185, 84, 0.9);
+    border: 1px solid rgba(29, 185, 84, 0.3);
+}
+
+.feature-badge {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: rgba(255, 193, 7, 0.9);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.song-item-type {
+    margin-top: 4px;
+}
+
+/* Song item variations for solo vs feature */
+.solo-song {
+    border-left: 3px solid rgba(29, 185, 84, 0.6);
+}
+
+.feature-song {
+    border-left: 3px solid rgba(255, 193, 7, 0.6);
+}

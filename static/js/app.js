@@ -29,10 +29,16 @@ function initializeWebSocket() {
         console.log('🔄 Executing refreshData() immediately...');
         refreshData();
         
+        // Update Recent Activity height to match Now Playing
+        setTimeout(() => {
+            updateRecentActivityHeight();
+        }, 100);
+        
         // Also force a second refresh after a short delay to ensure data is loaded
         setTimeout(() => {
             console.log('🔄 Executing second refreshData() to ensure data is loaded...');
             refreshData();
+            updateRecentActivityHeight();
         }, 500);
     });
     
@@ -145,12 +151,12 @@ function loadCurrentSong() {
                 
                 songDiv.innerHTML = `
                     <div class="song-main-content">
-                        ${albumCover}
-                        <div class="song-details">
-                            <div class="song-title">${playStatus} ${data.track}</div>
-                            <div class="song-artist">${data.artist}</div>
-                            <div class="song-album">${data.album}</div>
-                            ${progressBar}
+                    ${albumCover}
+                    <div class="song-details">
+                        <div class="song-title">${playStatus} ${data.track}</div>
+                        <div class="song-artist">${makeArtistClickable(data.artist)}</div>
+                        <div class="song-album">${data.album}</div>
+                        ${progressBar}
                         </div>
                     </div>
                     <div class="song-additional-info">
@@ -216,6 +222,9 @@ function loadCurrentSong() {
                 songDiv.dataset.durationMs = data.duration_ms;
                 songDiv.dataset.isPlaying = data.is_playing;
                 songDiv.dataset.lastUpdate = Date.now();
+                
+                // Update Recent Activity height to match Now Playing
+                updateRecentActivityHeight();
                 
                 // Update background based on album cover
                 if (data.album_cover) {
@@ -329,6 +338,18 @@ function formatTimeRemaining(progressMs, durationMs) {
     
     const remainingMs = durationMs - progressMs;
     return "-" + formatTime(remainingMs);
+}
+
+// Function to update Recent Activity height to match Now Playing
+function updateRecentActivityHeight() {
+    const songInfo = document.getElementById('song');
+    const recentActivity = document.getElementById('recentActivity');
+    
+    if (songInfo && recentActivity) {
+        const songHeight = songInfo.offsetHeight;
+        recentActivity.style.height = songHeight + 'px';
+        recentActivity.style.maxHeight = songHeight + 'px';
+    }
 }
 
 // Global variables for background transition
@@ -689,13 +710,13 @@ function updateHistoryDisplay() {
             const albumCover = song.album_cover ? 
                 `<div class="album-cover-container">
                     <img src="${song.album_cover}" alt="Album Cover" class="history-album-cover">
-                    <button class="play-btn-small album-play-btn-small" onclick="playSong('${escapeHtml(song.track_name)}', '${escapeHtml(song.artist_name)}', '${song.track_uri || ''}')" title="Play on Spotify">
+                    <button class="play-btn-small album-play-btn-small" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name)}" data-track-uri="${song.track_uri || ''}" title="Play on Spotify">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>` :
                 `<div class="album-cover-container">
                     <div class="history-album-cover-placeholder"><i class="fas fa-music"></i></div>
-                    <button class="play-btn-small album-play-btn-small" onclick="playSong('${escapeHtml(song.track_name)}', '${escapeHtml(song.artist_name)}', '${song.track_uri || ''}')" title="Play on Spotify">
+                    <button class="play-btn-small album-play-btn-small" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name)}" data-track-uri="${song.track_uri || ''}" title="Play on Spotify">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>`;
@@ -726,7 +747,7 @@ function updateHistoryDisplay() {
                 <tr>
                     <td class="album-cover-cell">${albumCover}</td>
                     <td class="track-name">${escapeHtml(song.track_name)}</td>
-                    <td class="artist-name">${escapeHtml(song.artist_name)}</td>
+                    <td class="artist-name">${makeArtistClickable(song.artist_name)}</td>
                     <td class="album-name">${escapeHtml(song.album_name)}</td>
                     <td class="device-name">${escapeHtml(song.device_name)}</td>
                     <td class="device-type">${escapeHtml(deviceType)}</td>
@@ -773,17 +794,18 @@ function escapeHtml(text) {
 
 function formatDuration(ms) {
     // Format milliseconds to human readable duration
-    if (!ms || ms === 0) return "0m";
+    if (!ms || ms === 0) return "0m 0s";
     
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
+    const remainingSeconds = seconds % 60;
     
     if (hours > 0) {
         const remainingMinutes = minutes % 60;
-        return `${hours}h ${remainingMinutes}m`;
+        return `${hours}h ${remainingMinutes}m ${remainingSeconds}s`;
     } else {
-        return `${minutes}m`;
+        return `${minutes}m ${remainingSeconds}s`;
     }
 }
 
@@ -876,8 +898,9 @@ function switchTab(tabName) {
     
     // Load tab-specific content
     if (tabName === 'home') {
-        loadRecentActivity();
-        createSimpleCharts();
+        // Always refresh data when switching to home tab to ensure recent activity is current
+        console.log('🏠 Switching to home tab, refreshing data...');
+        refreshData();
     } else if (tabName === 'graphs') {
         createDetailedCharts();
     }
@@ -887,9 +910,19 @@ function switchTab(tabName) {
 function loadRecentActivity() {
     const activityDiv = document.getElementById('recentActivity');
     
+    // Check if the recent activity element exists
+    if (!activityDiv) {
+        console.log('⚠️ Recent activity element not found, skipping update');
+        return;
+    }
+    
+    console.log('🔄 Updating recent activity with', allSongs?.length || 0, 'total songs');
+    
     // Filter out the currently playing song (songs without end_time) from recent activity
     // This ensures only completed songs show in the recent activity
     const completedSongs = allSongs.filter(song => song.end_time !== null);
+    
+    console.log('🔄 Found', completedSongs.length, 'completed songs for recent activity');
     
     // Show last 10 completed songs
     const recentSongs = completedSongs.slice(0, 10);
@@ -899,13 +932,13 @@ function loadRecentActivity() {
             const albumCover = song.album_cover ? 
                 `<div class="album-cover-container">
                     <img src="${song.album_cover}" alt="Album Cover" class="activity-cover">
-                    <button class="play-btn album-play-btn" onclick="playSong('${escapeHtml(song.track_name)}', '${escapeHtml(song.artist_name)}', '${song.track_uri || ''}')" title="Play on Spotify">
+                    <button class="play-btn album-play-btn" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name)}" data-track-uri="${song.track_uri || ''}" title="Play on Spotify">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>` :
                 `<div class="album-cover-container">
                     <div class="activity-cover-placeholder"><i class="fas fa-music"></i></div>
-                    <button class="play-btn album-play-btn" onclick="playSong('${escapeHtml(song.track_name)}', '${escapeHtml(song.artist_name)}', '${song.track_uri || ''}')" title="Play on Spotify">
+                    <button class="play-btn album-play-btn" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name)}" data-track-uri="${song.track_uri || ''}" title="Play on Spotify">
                         <i class="fas fa-play"></i>
                     </button>
                 </div>`;
@@ -938,12 +971,14 @@ function loadRecentActivity() {
             const timeAgo = getTimeAgo(songDate);
             const deviceIcon = getDeviceIcon(song.device_type);
             
+            const artistHtml = makeArtistClickable(song.artist_name);
+            
             return `
                 <div class="activity-item">
                     ${albumCover}
                     <div class="activity-details">
                         <div class="activity-track">${escapeHtml(song.track_name)}</div>
-                        <div class="activity-artist">${escapeHtml(song.artist_name)}</div>
+                        <div class="activity-artist">${artistHtml}</div>
                     </div>
                     <div class="activity-meta">
                         <div class="activity-device">
@@ -1051,13 +1086,19 @@ function displayTopArtistToday() {
     // Count artists - split by commas to handle multiple artists
     const artistCounts = {};
     todaysSongs.forEach(song => {
-        // Split artist names by comma and trim whitespace
-        const artists = song.artist_name.split(',').map(artist => artist.trim());
-        
-        // Count each individual artist
-        artists.forEach(artist => {
-            artistCounts[artist] = (artistCounts[artist] || 0) + 1;
-        });
+        // Handle special case for "Tyler, The Creator" - treat as single artist
+        let artistName = song.artist_name;
+        if (artistName === 'Tyler, The Creator') {
+            artistCounts[artistName] = (artistCounts[artistName] || 0) + 1;
+        } else {
+            // Split artist names by comma and trim whitespace
+            const artists = artistName.split(',').map(artist => artist.trim());
+            
+            // Count each individual artist
+            artists.forEach(artist => {
+                artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+            });
+        }
     });
     
     console.log('🎵 Top Artist Today - Artist counts (after splitting):', artistCounts);
@@ -1070,7 +1111,7 @@ function displayTopArtistToday() {
         const [artistName, playCount] = topArtist;
         console.log(`🎵 Top Artist Today - Top artist: ${artistName} with ${playCount} plays`);
         displayDiv.innerHTML = `
-            <div class="top-artist-name">${escapeHtml(artistName)}</div>
+            <div class="top-artist-name clickable-artist" onclick="openArtistPage('${escapeHtml(artistName)}')">${escapeHtml(artistName)}</div>
             <div class="top-artist-plays">${playCount} ${playCount === 1 ? 'play' : 'plays'}</div>
         `;
     } else {
@@ -1083,6 +1124,293 @@ function displayTopArtistToday() {
 function refreshTopArtistToday() {
     console.log('🔄 Manually refreshing Top Artist Today...');
     displayTopArtistToday();
+}
+
+// Artist Page Functions
+let currentArtist = null;
+
+function openArtistPage(artistName) {
+    console.log(`🎤 Opening artist page for: ${artistName}`);
+    currentArtist = artistName;
+    
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show artist page
+    document.getElementById('artistPage').classList.add('active');
+    
+    // Update navigation tabs
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Load artist data
+    loadArtistData(artistName);
+}
+
+function goBack() {
+    console.log('🔙 Going back to previous page');
+    
+    // Hide artist page
+    document.getElementById('artistPage').classList.remove('active');
+    
+    // Show home tab
+    document.getElementById('homeTab').classList.add('active');
+    
+    // Update navigation
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector('[data-tab="home"]').classList.add('active');
+    
+    currentArtist = null;
+}
+
+async function loadArtistData(artistName) {
+    console.log(`🎤 Loading artist data for: ${artistName}`);
+    
+    try {
+        // Show loading state
+        document.getElementById('artistName').textContent = artistName;
+        document.getElementById('artistImage').style.display = 'none';
+        document.getElementById('artistImagePlaceholder').style.display = 'flex';
+        
+        // Restore all artist sections to DOM before loading new data
+        restoreArtistSections();
+        
+        // Fetch artist data
+        const response = await fetch(`/api/artist?name=${encodeURIComponent(artistName)}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayArtistData(data);
+        } else {
+            console.error('❌ Error loading artist data:', data.error);
+            showNotification('Error loading artist data', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Error fetching artist data:', error);
+        showNotification('Error loading artist data', 'error');
+    }
+}
+
+function displayArtistData(data) {
+    console.log('🎤 Displaying artist data:', data);
+    
+    // Update artist name
+    document.getElementById('artistName').textContent = data.artist_name;
+    
+    // Update artist image
+    const artistImage = document.getElementById('artistImage');
+    const artistImagePlaceholder = document.getElementById('artistImagePlaceholder');
+    
+    if (data.artist_image) {
+        artistImage.src = data.artist_image;
+        artistImage.style.display = 'block';
+        artistImagePlaceholder.style.display = 'none';
+    } else {
+        artistImage.style.display = 'none';
+        artistImagePlaceholder.style.display = 'flex';
+    }
+    
+    // Update stats
+    document.getElementById('artistTotalSongs').textContent = data.total_songs;
+    document.getElementById('artistTotalTime').textContent = data.total_listening_time;
+    document.getElementById('artistUniqueTracks').textContent = data.unique_tracks;
+    
+    // Update section counts
+    document.getElementById('soloCount').textContent = data.solo_songs;
+    document.getElementById('featureCount').textContent = data.feature_songs;
+    document.getElementById('historyCount').textContent = data.full_history_list ? data.full_history_list.length : 0;
+    
+    // Display solo songs
+    displaySoloSongs(data.solo_songs_list);
+    
+    // Display feature songs
+    displayFeatureSongs(data.feature_songs_list);
+    
+    // Display full history
+    displayFullHistory(data.full_history_list);
+}
+
+function displaySoloSongs(songs) {
+    const container = document.getElementById('soloSongsList');
+    const section = container.closest('.artist-section');
+    
+    if (!songs || songs.length === 0) {
+        if (section.parentNode) {
+            section.remove();
+        }
+        return;
+    }
+    
+    // Ensure section is visible and in the DOM
+    if (!section.parentNode) {
+        document.querySelector('.artist-sections').appendChild(section);
+    }
+    section.style.display = 'block';
+    container.innerHTML = songs.map(song => `
+        <div class="song-item">
+            <div class="album-cover-container">
+                ${song.album_cover ? 
+                    `<img src="${song.album_cover}" alt="Album" class="song-item-cover">` :
+                    `<div class="song-item-cover-placeholder"><i class="fas fa-music"></i></div>`
+                }
+                <button class="album-play-btn" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name || 'Unknown')}" data-track-uri="${song.track_uri || ''}">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
+            <div class="song-item-details">
+                <div class="song-item-title">${escapeHtml(song.track_name)}</div>
+                <div class="song-item-album">${escapeHtml(song.album_name)}</div>
+                <div class="song-item-time">${formatDuration(song.track_duration_ms || song.played_duration_ms)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayFeatureSongs(songs) {
+    const container = document.getElementById('featureSongsList');
+    const section = container.closest('.artist-section');
+    
+    console.log('🎤 Displaying feature songs:', songs?.length || 0, 'songs');
+    
+    if (!songs || songs.length === 0) {
+        console.log('🎤 No feature songs, removing section');
+        if (section.parentNode) {
+            section.remove();
+        }
+        return;
+    }
+    
+    // Ensure section is visible and in the DOM
+    if (!section.parentNode) {
+        document.querySelector('.artist-sections').appendChild(section);
+    }
+    section.style.display = 'block';
+    container.innerHTML = songs.map(song => `
+        <div class="song-item">
+            <div class="album-cover-container">
+                ${song.album_cover ? 
+                    `<img src="${song.album_cover}" alt="Album" class="song-item-cover">` :
+                    `<div class="song-item-cover-placeholder"><i class="fas fa-music"></i></div>`
+                }
+                <button class="album-play-btn" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name)}" data-track-uri="${song.track_uri || ''}">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
+            <div class="song-item-details">
+                <div class="song-item-title">${escapeHtml(song.track_name)}</div>
+                <div class="song-item-artists">${makeArtistClickable(song.artist_name)}</div>
+                <div class="song-item-album">${escapeHtml(song.album_name)}</div>
+                <div class="song-item-time">${formatDuration(song.track_duration_ms || song.played_duration_ms)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayFullHistory(songs) {
+    const container = document.getElementById('fullHistoryList');
+    const section = container.closest('.artist-section');
+    
+    if (!songs || songs.length === 0) {
+        if (section.parentNode) {
+            section.remove();
+        }
+        return;
+    }
+    
+    // Ensure section is visible and in the DOM
+    if (!section.parentNode) {
+        document.querySelector('.artist-sections').appendChild(section);
+    }
+    section.style.display = 'block';
+    container.innerHTML = songs.map(song => `
+        <div class="song-item">
+            <div class="album-cover-container">
+                ${song.album_cover ? 
+                    `<img src="${song.album_cover}" alt="Album" class="song-item-cover">` :
+                    `<div class="song-item-cover-placeholder"><i class="fas fa-music"></i></div>`
+                }
+                <button class="album-play-btn" data-track-name="${escapeHtml(song.track_name)}" data-artist-name="${escapeHtml(song.artist_name)}" data-track-uri="${song.track_uri || ''}">
+                    <i class="fas fa-play"></i>
+                </button>
+            </div>
+            <div class="song-item-details">
+                <div class="song-item-title">${escapeHtml(song.track_name)}</div>
+                <div class="song-item-album">${escapeHtml(song.album_name)}</div>
+                <div class="song-item-time">${formatDuration(song.played_duration_ms)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function restoreArtistSections() {
+    console.log('🎤 Restoring artist sections to DOM');
+    
+    const artistSections = document.querySelector('.artist-sections');
+    
+    // Get the original HTML structure from the template
+    const originalSections = `
+        <div class="artist-section">
+            <h3><i class="fas fa-users"></i> Features (<span id="featureCount">0</span>)</h3>
+            <div id="featureSongsList" class="songs-list"></div>
+        </div>
+        
+        <div class="artist-section">
+            <h3><i class="fas fa-microphone"></i> Solo Tracks (<span id="soloCount">0</span>)</h3>
+            <div id="soloSongsList" class="songs-list"></div>
+        </div>
+        
+        <div class="artist-section">
+            <h3><i class="fas fa-history"></i> Full History (<span id="historyCount">0</span>)</h3>
+            <div id="fullHistoryList" class="songs-list"></div>
+        </div>
+    `;
+    
+    // Clear existing content and restore original structure
+    artistSections.innerHTML = originalSections;
+    
+    console.log('🎤 Artist sections restored');
+}
+
+// Helper function to make artist names clickable
+function makeArtistClickable(artistName) {
+    // Handle special case for "Tyler, The Creator" - treat as single artist
+    if (artistName === 'Tyler, The Creator') {
+        return `<span class="clickable-artist" data-artist="${escapeHtml(artistName)}">${escapeHtml(artistName)}</span>`;
+    }
+    
+    // Check if the artist name contains "Tyler, The Creator" as part of a larger list
+    if (artistName.includes('Tyler, The Creator')) {
+        // Split by comma, but treat "Tyler, The Creator" as a single unit
+        const parts = artistName.split(', ');
+        const processedParts = [];
+        
+        for (let i = 0; i < parts.length; i++) {
+            if (parts[i] === 'Tyler' && i + 1 < parts.length && parts[i + 1] === 'The Creator') {
+                // Combine "Tyler" and "The Creator" into one clickable element
+                processedParts.push(`<span class="clickable-artist" data-artist="${escapeHtml('Tyler, The Creator')}">${escapeHtml('Tyler, The Creator')}</span>`);
+                i++; // Skip the next part since we've combined it
+            } else if (parts[i] === 'The Creator' && i > 0 && parts[i - 1] === 'Tyler') {
+                // Skip this part as it was already handled in the previous iteration
+                continue;
+            } else {
+                // Regular artist name
+                processedParts.push(`<span class="clickable-artist" data-artist="${escapeHtml(parts[i])}">${escapeHtml(parts[i])}</span>`);
+            }
+        }
+        
+        return processedParts.join(', ');
+    }
+    
+    // Split artist names and make each clickable
+    const artists = artistName.split(',').map(artist => artist.trim());
+    return artists.map(artist => 
+        `<span class="clickable-artist" data-artist="${escapeHtml(artist)}">${escapeHtml(artist)}</span>`
+    ).join(', ');
 }
 
 // Debug function to test timezone calculations
@@ -1354,7 +1682,18 @@ function createTopArtistsAllTimeChart() {
     
     const artistCounts = {};
     allSongs.forEach(song => {
-        artistCounts[song.artist_name] = (artistCounts[song.artist_name] || 0) + 1;
+        // Handle special case for "Tyler, The Creator" - treat as single artist
+        let artistName = song.artist_name;
+        if (artistName === 'Tyler, The Creator') {
+            artistCounts[artistName] = (artistCounts[artistName] || 0) + 1;
+        } else {
+            // Split artist names by comma and count each individually
+            const artists = artistName.split(',').map(artist => artist.trim());
+            
+            artists.forEach(artist => {
+                artistCounts[artist] = (artistCounts[artist] || 0) + 1;
+            });
+        }
     });
     
     const topArtists = Object.entries(artistCounts)
@@ -1434,13 +1773,20 @@ function createTopArtistByDayChart() {
             
             // Only count songs with ≥1m listening time (same as Top Artist Today)
             if (song.played_duration_ms && song.played_duration_ms >= 60000) {
-                // Split artist names by comma and count each individually
-                const artists = song.artist_name.split(',').map(artist => artist.trim());
-                
-                artists.forEach(artist => {
-                    dayOfWeekData[dayName].artistCounts[artist] = 
-                        (dayOfWeekData[dayName].artistCounts[artist] || 0) + 1;
-                });
+                // Handle special case for "Tyler, The Creator" - treat as single artist
+                let artistName = song.artist_name;
+                if (artistName === 'Tyler, The Creator') {
+                    dayOfWeekData[dayName].artistCounts[artistName] = 
+                        (dayOfWeekData[dayName].artistCounts[artistName] || 0) + 1;
+                } else {
+                    // Split artist names by comma and count each individually
+                    const artists = artistName.split(',').map(artist => artist.trim());
+                    
+                    artists.forEach(artist => {
+                        dayOfWeekData[dayName].artistCounts[artist] = 
+                            (dayOfWeekData[dayName].artistCounts[artist] || 0) + 1;
+                    });
+                }
             }
         }
     });
@@ -2416,12 +2762,15 @@ function refreshData() {
     
     // Load history data first, then update UI based on active tab
     loadHistory().then(() => {
+        // Always update recent activity regardless of current tab
+        // This ensures recent activity stays current even when on other pages
+        loadRecentActivity();
+        
         // Update content for current active tab after history is loaded
         const activeTab = document.querySelector('.nav-tab.active');
         if (activeTab) {
             const tabName = activeTab.getAttribute('data-tab');
             if (tabName === 'home') {
-                loadRecentActivity();
                 createSimpleCharts();
             } else if (tabName === 'graphs') {
                 createDetailedCharts();
@@ -2505,15 +2854,14 @@ document.addEventListener('DOMContentLoaded', function() {
             initialSortColumn.classList.add(`sort-${currentSort.direction}`);
         }
     }, 100);
+    
+    // Initial height update after a delay to ensure content is loaded
+    setTimeout(() => {
+        updateRecentActivityHeight();
+    }, 500);
 
     // Initial load
     refreshData();
-
-    // Load initial home tab content
-    setTimeout(() => {
-        loadRecentActivity();
-        createSimpleCharts();
-    }, 500);
     
     // Refresh top artist display every minute to ensure it updates at midnight
     setInterval(() => {
@@ -2536,6 +2884,28 @@ document.addEventListener('DOMContentLoaded', function() {
             checkTableOverflow();
         }, 250);
     });
+
+    // Clickable artist event listener (delegated to handle dynamically added elements)
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('clickable-artist')) {
+            const artistName = event.target.getAttribute('data-artist');
+            if (artistName) {
+                openArtistPage(artistName);
+            }
+        }
+        
+        // Handle play button clicks
+        const playButton = event.target.closest('.play-btn, .play-btn-small, .album-play-btn');
+        if (playButton) {
+            const trackName = playButton.getAttribute('data-track-name');
+            const artistName = playButton.getAttribute('data-artist-name');
+            const trackUri = playButton.getAttribute('data-track-uri');
+            
+            if (trackName && artistName) {
+                playSong(trackName, artistName, trackUri);
+            }
+        }
+    });
 });
 
 // Play song function
@@ -2543,7 +2913,7 @@ function playSong(trackName, artistName, trackUri) {
     console.log('🎵 Attempting to play:', trackName, 'by', artistName);
     
     // Show loading state
-    const clickedButton = event.target.closest('.play-btn, .play-btn-small');
+    const clickedButton = event.target.closest('.play-btn, .play-btn-small, .album-play-btn');
     const originalContent = clickedButton.innerHTML;
     clickedButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     clickedButton.disabled = true;

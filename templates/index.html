@@ -12,6 +12,7 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/artist-page.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -294,6 +295,74 @@
                     <div class="graph-card">
                         <h3><i class="fas fa-trophy"></i> Completion Rate Trends</h3>
                         <canvas id="completionRateChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Artist Page Content -->
+        <div id="artistPage" class="tab-content">
+            <div class="artist-header">
+                <button class="back-btn" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div class="artist-info">
+                    <div class="artist-image-container">
+                        <img id="artistImage" src="" alt="Artist" class="artist-image">
+                        <div id="artistImagePlaceholder" class="artist-image-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    <div class="artist-details">
+                        <h1 id="artistName">Artist Name</h1>
+                        <div class="artist-stats">
+                            <div class="stat-item">
+                                <span class="stat-number" id="artistTotalSongs">0</span>
+                                <span class="stat-label">Total Songs</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="artistTotalTime">0m</span>
+                                <span class="stat-label">Listening Time</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="artistUniqueTracks">0</span>
+                                <span class="stat-label">Unique Tracks</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="artist-content">
+                <div class="artist-sections">
+                    <div class="artist-section">
+                        <h3><i class="fas fa-users"></i> Features (<span id="featureCount">0</span>)</h3>
+                        <div id="featureSongsList" class="songs-list">
+                            <div class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <div>Loading features...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="artist-section">
+                        <h3><i class="fas fa-microphone"></i> Solo Tracks (<span id="soloCount">0</span>)</h3>
+                        <div id="soloSongsList" class="songs-list">
+                            <div class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <div>Loading solo songs...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="artist-section">
+                        <h3><i class="fas fa-history"></i> Full History (<span id="historyCount">0</span>)</h3>
+                        <div id="fullHistoryList" class="songs-list">
+                            <div class="loading">
+                                <i class="fas fa-spinner"></i>
+                                <div>Loading history...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

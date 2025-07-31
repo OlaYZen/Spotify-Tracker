@@ -1,17 +1,66 @@
-from flask import Flask, render_template, jsonify, request
-from flask_socketio import SocketIO, emit
 import os
+import logging
+import pytz
+from datetime import datetime, timedelta
+from flask import Flask, render_template, jsonify, request, send_file
+from flask_socketio import SocketIO, emit
+from sqlalchemy import create_engine, Column, String, DateTime, Integer, Boolean, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 import threading
 import time
-import logging
-from datetime import datetime
-import pytz
-from spotipy import Spotify
-from spotipy.oauth2 import SpotifyOAuth
+import requests
+import hashlib
+from pathlib import Path
 from models import SongPlay, Session
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Create cache directory for artist images
+CACHE_DIR = Path("cache/artist_images")
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+def get_cached_artist_image(artist_name):
+    """Get cached artist image if it exists and is not too old"""
+    try:
+        # Create a safe filename from artist name
+        safe_name = hashlib.md5(artist_name.encode()).hexdigest()
+        cache_file = CACHE_DIR / f"{safe_name}.jpg"
+        
+        if cache_file.exists():
+            # Check if file is less than 30 days old
+            file_age = datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
+            if file_age.days < 30:
+                return f"/cache/artist_images/{safe_name}.jpg"
+        
+        return None
+    except Exception as e:
+        logger.warning(f"Error checking cache for {artist_name}: {e}")
+        return None
+
+def cache_artist_image(artist_name, image_url):
+    """Download and cache artist image"""
+    try:
+        # Create a safe filename from artist name
+        safe_name = hashlib.md5(artist_name.encode()).hexdigest()
+        cache_file = CACHE_DIR / f"{safe_name}.jpg"
+        
+        # Download the image
+        response = requests.get(image_url, timeout=10)
+        response.raise_for_status()
+        
+        # Save to cache
+        with open(cache_file, 'wb') as f:
+            f.write(response.content)
+        
+        logger.info(f"Cached artist image for {artist_name}")
+        return f"/cache/artist_images/{safe_name}.jpg"
+    except Exception as e:
+        logger.warning(f"Error caching image for {artist_name}: {e}")
+        return image_url  # Return original URL if caching fails
 
 # Configure logging with Berlin timezone
 # Get log level from environment variable, default to ERROR
@@ -61,7 +110,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Initialize Spotify client with configurable timeout
 spotify_timeout = int(os.getenv('SPOTIFY_TIMEOUT', 30))  # Default 30 seconds
-sp = Spotify(auth_manager=SpotifyOAuth(
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     client_id=os.getenv('SPOTIPY_CLIENT_ID'),
     client_secret=os.getenv('SPOTIPY_CLIENT_SECRET'),
     redirect_uri=os.getenv('SPOTIPY_REDIRECT_URI'),
@@ -251,10 +300,13 @@ def get_history():
     session = None
     try:
         session = Session()
-        recent_songs = session.query(SongPlay).order_by(SongPlay.timestamp.desc()).limit(200).all()
+        recent_songs = session.query(SongPlay).order_by(SongPlay.timestamp.desc()).all()
         
         songs = []
         local_tz = pytz.timezone('Europe/Berlin')  # Adjust to your timezone
+        
+        # Group songs by track to handle artist name combinations
+        track_groups = {}
         
         for song in recent_songs:
             # Convert UTC timestamp to local timezone
@@ -271,21 +323,58 @@ def get_history():
                 local_timestamp = utc_timestamp.astimezone(local_tz)
                 local_date_str = local_timestamp.strftime('%Y-%m-%d')
             
+            # Create a unique key for each track
+            track_key = f"{song.track_name}_{song.album_name}_{local_date_str}"
+            
+            if track_key not in track_groups:
+                track_groups[track_key] = {
+                    'track_name': song.track_name,
+                    'album_name': song.album_name,
+                    'device_name': song.device_name,
+                    'device_type': song.device_type,
+                    'timestamp': local_timestamp,
+                    'date': local_date_str,
+                    'album_cover': song.album_cover_url,
+                    'track_uri': song.track_uri,
+                    'played_duration_ms': song.played_duration_ms,
+                    'track_duration_ms': song.track_duration_ms,
+                    'is_completed': song.is_completed,
+                    'start_time': song.start_time,
+                    'end_time': song.end_time,
+                    'artists': set()
+                }
+            
+            # Add artist to the set
+            track_groups[track_key]['artists'].add(song.artist_name)
+        
+        # Process each track group and combine artist names
+        for track_data in track_groups.values():
+            artists = list(track_data['artists'])
+            
+            # Handle "Tyler, The Creator" special case
+            if 'Tyler' in artists and 'The Creator' in artists:
+                # Remove both individual entries and add the combined name
+                artists = [artist for artist in artists if artist not in ['Tyler', 'The Creator']]
+                artists.append('Tyler, The Creator')
+            
+            # Join artists with commas
+            artist_name = ', '.join(sorted(artists))
+            
             songs.append({
-                'track_name': song.track_name,
-                'artist_name': song.artist_name,
-                'album_name': song.album_name,
-                'device_name': song.device_name,
-                'device_type': song.device_type,
-                'timestamp': local_timestamp.isoformat() if local_timestamp else None,
-                'date': local_date_str,
-                'album_cover': song.album_cover_url,
-                'track_uri': song.track_uri,
-                'played_duration_ms': song.played_duration_ms,
-                'track_duration_ms': song.track_duration_ms,
-                'is_completed': song.is_completed,
-                'start_time': song.start_time.isoformat() if song.start_time else None,
-                'end_time': song.end_time.isoformat() if song.end_time else None
+                'track_name': track_data['track_name'],
+                'artist_name': artist_name,
+                'album_name': track_data['album_name'],
+                'device_name': track_data['device_name'],
+                'device_type': track_data['device_type'],
+                'timestamp': track_data['timestamp'].isoformat() if track_data['timestamp'] else None,
+                'date': track_data['date'],
+                'album_cover': track_data['album_cover'],
+                'track_uri': track_data['track_uri'],
+                'played_duration_ms': track_data['played_duration_ms'],
+                'track_duration_ms': track_data['track_duration_ms'],
+                'is_completed': track_data['is_completed'],
+                'start_time': track_data['start_time'].isoformat() if track_data['start_time'] else None,
+                'end_time': track_data['end_time'].isoformat() if track_data['end_time'] else None
             })
         
         logger.info(f"📜 Returning {len(songs)} songs from history")
@@ -477,6 +566,269 @@ def test_websocket():
     except Exception as e:
         logger.error(f"❌ Error in WebSocket test: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/artist')
+def get_artist_stats():
+    """Get detailed statistics for a specific artist"""
+    artist_name = request.args.get('name')
+    if not artist_name:
+        return jsonify({'error': 'Artist name is required'}), 400
+    
+    logger.info(f"🎤 Artist stats API requested for: {artist_name}")
+    session = None
+    try:
+        session = Session()
+        
+        # Decode URL-encoded artist name
+        import urllib.parse
+        artist_name = urllib.parse.unquote(artist_name)
+        
+        # Get all songs where this artist appears (either solo or as feature)
+        all_songs = session.query(SongPlay).all()
+        
+        solo_songs = []
+        feature_songs = []
+        all_plays = []  # All plays including duplicates for history
+        total_listened_ms = 0
+        
+        for song in all_songs:
+            # Handle special case for "Tyler, The Creator"
+            if song.artist_name == 'Tyler, The Creator' and artist_name == 'Tyler, The Creator':
+                solo_songs.append(song)
+                all_plays.append(song)
+                total_listened_ms += song.played_duration_ms or 0
+            else:
+                # Split artist names and check if our artist appears
+                artists = [x.strip() for x in song.artist_name.split(',')]
+                if artist_name in artists:
+                    all_plays.append(song)  # Add to history regardless
+                    if len(artists) == 1:
+                        # Solo song - artist is the only artist
+                        solo_songs.append(song)
+                    else:
+                        # Feature song - artist appears with other artists
+                        feature_songs.append(song)
+                    total_listened_ms += song.played_duration_ms or 0
+        
+        # Calculate statistics
+        solo_count = len(solo_songs)
+        feature_count = len(feature_songs)
+        total_songs = solo_count + feature_count
+        
+        # Get unique tracks for profile (avoid duplicates)
+        unique_solo_tracks = {}
+        unique_feature_tracks = {}
+        
+        # Process solo songs - keep only unique tracks
+        for song in solo_songs:
+            track_key = f"{song.track_name}_{song.album_name}"
+            if track_key not in unique_solo_tracks:
+                unique_solo_tracks[track_key] = song
+            else:
+                # If we already have this track, keep the one with more play time
+                existing = unique_solo_tracks[track_key]
+                if (song.played_duration_ms or 0) > (existing.played_duration_ms or 0):
+                    unique_solo_tracks[track_key] = song
+        
+        # Process feature songs - keep only unique tracks
+        for song in feature_songs:
+            track_key = f"{song.track_name}_{song.album_name}"
+            if track_key not in unique_feature_tracks:
+                unique_feature_tracks[track_key] = song
+            else:
+                # If we already have this track, keep the one with more play time
+                existing = unique_feature_tracks[track_key]
+                if (song.played_duration_ms or 0) > (existing.played_duration_ms or 0):
+                    unique_feature_tracks[track_key] = song
+        
+        # Get unique track counts
+        unique_tracks = len(unique_solo_tracks) + len(unique_feature_tracks)
+        
+        # Format total listening time
+        def format_duration(ms):
+            if not ms:
+                return "0m"
+            minutes = int(ms / 60000)
+            hours = minutes // 60
+            minutes = minutes % 60
+            if hours > 0:
+                return f"{hours}h {minutes}m"
+            return f"{minutes}m"
+        
+        # Try to get artist profile picture from Spotify
+        artist_image = None
+        
+        # First check if we have a cached version
+        cached_image = get_cached_artist_image(artist_name)
+        if cached_image:
+            artist_image = cached_image
+            logger.info(f"Using cached image for {artist_name}")
+        else:
+            # If not cached, fetch from Spotify and cache it
+            try:
+                # Strategy 1: Search with quotes for exact match
+                search_query = f'"{artist_name}"'
+                search_results = sp.search(q=search_query, type='artist', limit=5)
+                
+                if search_results['artists']['items']:
+                    # Try to find an exact match first
+                    exact_match = None
+                    for artist in search_results['artists']['items']:
+                        if artist['name'].lower() == artist_name.lower():
+                            exact_match = artist
+                            break
+                    
+                    if exact_match:
+                        artist = exact_match
+                        logger.info(f"Found exact match for {artist_name}: {artist['name']}")
+                    else:
+                        # Strategy 2: Try without quotes if no exact match
+                        search_results2 = sp.search(q=artist_name, type='artist', limit=5)
+                        if search_results2['artists']['items']:
+                            # Look for close matches
+                            best_match = None
+                            best_score = 0
+                            
+                            for artist in search_results2['artists']['items']:
+                                # Simple similarity scoring
+                                artist_lower = artist['name'].lower()
+                                query_lower = artist_name.lower()
+                                
+                                # Exact match gets highest score
+                                if artist_lower == query_lower:
+                                    best_match = artist
+                                    break
+                                # Contains the full name
+                                elif query_lower in artist_lower or artist_lower in query_lower:
+                                    score = len(set(artist_lower.split()) & set(query_lower.split()))
+                                    if score > best_score:
+                                        best_score = score
+                                        best_match = artist
+                            
+                            if best_match:
+                                artist = best_match
+                                logger.info(f"Found best match for {artist_name}: {artist['name']}")
+                            else:
+                                artist = search_results2['artists']['items'][0]
+                                logger.warning(f"No good match found for {artist_name}, using: {artist['name']}")
+                        else:
+                            artist = search_results['artists']['items'][0]
+                            logger.warning(f"No exact match found for {artist_name}, using: {artist['name']}")
+                    
+                    if artist['images']:
+                        spotify_image_url = artist['images'][0]['url']  # Get the largest image
+                        # Cache the image and get the cached URL
+                        artist_image = cache_artist_image(artist_name, spotify_image_url)
+            
+            except Exception as e:
+                logger.warning(f"Could not fetch artist image for {artist_name}: {e}")
+        
+        result = {
+            'artist_name': artist_name,
+            'artist_image': artist_image,
+            'solo_songs': solo_count,
+            'feature_songs': feature_count,
+            'total_songs': total_songs,
+            'unique_tracks': unique_tracks,
+            'total_listening_time': format_duration(total_listened_ms),
+            'total_listened_ms': total_listened_ms,
+            'solo_songs_list': [{
+                'track_name': song.track_name,
+                'album_name': song.album_name,
+                'played_duration_ms': song.played_duration_ms,
+                'track_duration_ms': song.track_duration_ms,
+                'timestamp': song.timestamp.isoformat() if song.timestamp else None,
+                'album_cover': song.album_cover_url,
+                'track_uri': song.track_uri
+            } for song in list(unique_solo_tracks.values())[:10]],  # Limit to 10 most recent unique tracks
+            'feature_songs_list': [{
+                'track_name': song.track_name,
+                'album_name': song.album_name,
+                'artist_name': song.artist_name,
+                'played_duration_ms': song.played_duration_ms,
+                'timestamp': song.timestamp.isoformat() if song.timestamp else None,
+                'album_cover': song.album_cover_url,
+                'track_uri': song.track_uri
+            } for song in list(unique_feature_tracks.values())[:10]],  # Limit to 10 most recent unique tracks
+            'full_history_list': [{
+                'track_name': song.track_name,
+                'album_name': song.album_name,
+                'artist_name': song.artist_name,
+                'played_duration_ms': song.played_duration_ms,
+                'track_duration_ms': song.track_duration_ms,
+                'timestamp': song.timestamp.isoformat() if song.timestamp else None,
+                'album_cover': song.album_cover_url,
+                'track_uri': song.track_uri,
+                'is_solo': len([x.strip() for x in song.artist_name.split(',')]) == 1 or (song.artist_name == 'Tyler, The Creator' and artist_name == 'Tyler, The Creator')
+            } for song in sorted(all_plays, key=lambda x: x.timestamp, reverse=True)[:50]]  # Limit to 50 most recent plays (including duplicates)
+        }
+        
+        logger.info(f"🎤 Artist stats for {artist_name}: {total_songs} total songs, {format_duration(total_listened_ms)} listening time")
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting artist stats: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if session:
+            session.close()
+
+@app.route('/api/debug/artist-search')
+def debug_artist_search():
+    """Debug endpoint to test artist search functionality"""
+    artist_name = request.args.get('name')
+    if not artist_name:
+        return jsonify({'error': 'Artist name is required'}), 400
+    
+    logger.info(f"🔍 Debug artist search for: {artist_name}")
+    
+    # Decode URL-encoded artist name
+    import urllib.parse
+    artist_name = urllib.parse.unquote(artist_name)
+    
+    results = {
+        'artist_name': artist_name,
+        'search_results': [],
+        'final_result': None
+    }
+    
+    try:
+        # Test search strategies
+        search_query = f'"{artist_name}"'
+        search_results = sp.search(q=search_query, type='artist', limit=5)
+        
+        for i, artist in enumerate(search_results['artists']['items']):
+            results['search_results'].append({
+                'rank': i + 1,
+                'id': artist['id'],
+                'name': artist['name'],
+                'popularity': artist['popularity'],
+                'image': artist['images'][0]['url'] if artist['images'] else None,
+                'is_exact_match': artist['name'].lower() == artist_name.lower()
+            })
+        
+        # Show what would be selected
+        if results['search_results']:
+            exact_match = next((r for r in results['search_results'] if r['is_exact_match']), None)
+            results['final_result'] = exact_match if exact_match else results['search_results'][0]
+            
+    except Exception as e:
+        results['error'] = str(e)
+    
+    return jsonify(results)
+
+@app.route('/cache/artist_images/<filename>')
+def serve_cached_image(filename):
+    """Serve cached artist images"""
+    try:
+        cache_file = CACHE_DIR / filename
+        if cache_file.exists():
+            return send_file(cache_file, mimetype='image/jpeg')
+        else:
+            return "Image not found", 404
+    except Exception as e:
+        logger.error(f"Error serving cached image {filename}: {e}")
+        return "Error serving image", 500
 
 if __name__ == '__main__':
     logger.info("🚀 Starting Flask app with WebSocket support...")

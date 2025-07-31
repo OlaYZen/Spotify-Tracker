@@ -4,3 +4,4 @@ tools/
 .cache
 __pycache__/
 output.log
+cache/

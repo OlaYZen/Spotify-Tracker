@@ -4,6 +4,11 @@
     box-sizing: border-box;
 }
 
+/* Add text-shadow to all text elements */
+* {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 html {
     height: 100%;
     overflow-x: hidden;
@@ -106,6 +111,7 @@ body::before {
     gap: 8px;
     position: relative;
     overflow: hidden;
+    border: 1px solid rgba(4, 8, 5, 0);
 }
 
 .nav-tab::before {
@@ -138,7 +144,7 @@ body::before {
     box-shadow: 
         0 8px 32px rgba(29, 185, 84, 0.25),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(29, 185, 84, 0.3);
+    border: 1px solid rgba(29, 185, 84, 0.3) !important;
 }
 
 .nav-tab.active::before {
@@ -221,15 +227,52 @@ body::before {
 .recent-activity h2 {
     font-size: 1.5rem;
     margin-bottom: 20px;
-    color: #1db954;
+    color: #ffffff;
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+.fas.fa-clock{
+    color: rgba(29, 185, 84, 0.8);
+}
+
 .activity-list {
     max-height: 300px;
     overflow-y: auto;
+}
+
+/* Custom scrollbar for Recent Activity */
+.activity-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.activity-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin: 5px 0;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+    background: rgba(29, 185, 84, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.activity-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(29, 185, 84, 0.6);
+    transform: scale(1.1);
+}
+
+.activity-list::-webkit-scrollbar-thumb:active {
+    background: rgba(29, 185, 84, 0.8);
+}
+
+/* Firefox scrollbar styling */
+.activity-list {
+    scrollbar-width: auto;
+    scrollbar-color: rgba(29, 185, 84, 0.3) rgba(255, 255, 255, 0.05);
 }
 
 .activity-item {
@@ -251,6 +294,10 @@ body::before {
     overflow: hidden;
 }
 
+.activity-item:first-child {
+    margin-top: 0;
+}
+
 .activity-item::before {
     content: '';
     position: absolute;
@@ -261,6 +308,7 @@ body::before {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
     opacity: 0;
     transition: opacity 0.4s ease;
+    pointer-events: none;
 }
 
 .activity-item:hover {
@@ -319,6 +367,26 @@ body::before {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Ensure clickable artists in activity section are properly styled */
+.activity-artist .clickable-artist {
+    color: rgba(29, 185, 84, 0.8) !important;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    border-bottom: 1px solid transparent !important;
+    display: inline-block;
+}
+
+.activity-artist .clickable-artist:hover {
+    color: rgba(29, 185, 84, 1) !important;
+    border-bottom: 1px solid rgba(29, 185, 84, 0.6) !important;
+    transform: translateY(-1px);
+}
+
+.activity-artist .clickable-artist:active {
+    transform: translateY(0);
 }
 
 .activity-meta {
@@ -438,7 +506,7 @@ body::before {
     position: relative;
 }
 
-.top-artist-display::before {
+/* .top-artist-display::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -448,7 +516,7 @@ body::before {
     background: radial-gradient(circle, rgba(29, 185, 84, 0.1) 0%, transparent 70%);
     transform: translate(-50%, -50%);
     z-index: 0;
-}
+} */
 
 .top-artist-name {
     font-size: 2.5rem;
@@ -606,6 +674,7 @@ body::before {
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     position: relative;
     overflow: hidden;
+    min-height: 307.2px;
 }
 
 .song-main-content {
@@ -675,9 +744,38 @@ body::before {
     align-items: center;
     justify-content: center;
     width: 100%;
+    height: 200px;
     text-align: center;
     gap: 10px;
     padding: 40px 20px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Center the loading content when loading current song */
+.song-info .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 200px;
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.6);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.song-info .loading i {
+    font-size: 3.5rem;
+    margin-bottom: 18px;
+    animation: spin 1s linear infinite;
+    color: rgba(29, 185, 84, 0.8);
 }
 
 .song-info::before {
@@ -1556,10 +1654,12 @@ body::before {
 .stat-number {
     font-size: 2rem;
     font-weight: 700;
-    background: linear-gradient(135deg, rgba(29, 185, 84, 1) 0%, rgba(30, 215, 96, 1) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    
+    color: rgba(29, 185, 84, 0.8) !important;
+    /* background: linear-gradient(135deg, rgba(29, 185, 84, 1) 0%, rgba(30, 215, 96, 1) 100%); */
+    /* -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; */
+    /* background-clip: text; */
     margin-bottom: 5px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
